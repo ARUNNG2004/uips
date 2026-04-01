@@ -108,6 +108,11 @@ register_socket_events(socketio)
 # ---------------------------------------------------------------------------
 # Security headers
 # ---------------------------------------------------------------------------
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Server is running ✅"
 
 
 @app.after_request
