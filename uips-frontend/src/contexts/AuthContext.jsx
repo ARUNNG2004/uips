@@ -12,7 +12,6 @@ export const AuthProvider = ({ children }) => {
       try {
         const stored = sessionStorage.getItem('uips_user');
         if (stored) {
-          const parsed = JSON.parse(stored);
           // Verify with backend
           const response = await client.get('/api/auth/me');
           setUser(response.data);
@@ -31,20 +30,29 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await client.post('/api/auth/login', { email, password });
-      const userData = {
-        id: response.data.id,
-        name: response.data.name,
-        email,
-        role: response.data.role
-      };
+      await client.post('/api/auth/login', { email, password });
+
+      // Confirm backend session is active before treating user as authenticated.
+      const meResponse = await client.get('/api/auth/me');
+      const userData = meResponse.data;
+
       setUser(userData);
       sessionStorage.setItem('uips_user', JSON.stringify(userData));
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Login failed' 
+      sessionStorage.removeItem('uips_user');
+      setUser(null);
+
+      if (error.response?.status === 401) {
+        return {
+          success: false,
+          error: 'Login succeeded but session was not established. Please try again.'
+        };
+      }
+
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Login failed'
       };
     }
   };
