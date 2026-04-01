@@ -274,20 +274,6 @@ def start_auto_analysis():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    import eventlet
-    port = int(os.environ.get("PORT", 5000))
-    print(f"\n[UIPS] Starting server on http://0.0.0.0:{port}")
-    print(f"[UIPS] Environment: {env}")
-    print(f"[UIPS] Debug: {app.config.get('DEBUG', False)}")
-
-    # Start background auto-analysis in a green thread
-    eventlet.spawn(start_auto_analysis)
-
-    socketio.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        debug=app.config.get("DEBUG", False),
-        use_reloader=False,
-    )
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
