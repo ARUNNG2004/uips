@@ -25,6 +25,10 @@ env = os.environ.get("FLASK_ENV", "development")
 config_class = config_by_name.get(env, config_by_name["development"])
 
 app = Flask(__name__)
+db.init_app(app)
+@app.route("/")
+def home():
+    return 
 app.config.from_object(config_class)
 
 # If ProductionConfig uses @property for SECRET_KEY, set it explicitly
@@ -108,11 +112,9 @@ register_socket_events(socketio)
 # ---------------------------------------------------------------------------
 # Security headers
 # ---------------------------------------------------------------------------
-app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Server is running ✅"
+
+"Server is running ✅"
 
 
 @app.after_request
