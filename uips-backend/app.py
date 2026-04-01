@@ -27,7 +27,6 @@ config_class = config_by_name.get(env, config_by_name["development"])
 app = Flask(__name__)
 app.config.from_object(config_class)
 
-# If ProductionConfig uses @property for SECRET_KEY, set it explicitly
 if env == "production":
     app.config["SECRET_KEY"] = config_class().SECRET_KEY
 
@@ -72,7 +71,6 @@ socketio = SocketIO(
 # Flask-Login user loader
 # ---------------------------------------------------------------------------
 
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -106,9 +104,22 @@ app.register_blueprint(reports_bp)
 register_socket_events(socketio)
 
 # ---------------------------------------------------------------------------
-# Security headers
+# Routes
 # ---------------------------------------------------------------------------
 
+@app.route("/")
+def home():
+    return "Server is running ✅"
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    return jsonify({"status": "healthy", "version": "1.0.0"})
+
+
+# ---------------------------------------------------------------------------
+# Security headers
+# ---------------------------------------------------------------------------
 
 @app.after_request
 def add_security_headers(response):
@@ -119,25 +130,12 @@ def add_security_headers(response):
 
 
 # ---------------------------------------------------------------------------
-# Health check
-# ---------------------------------------------------------------------------
-
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    return jsonify({"status": "healthy", "version": "1.0.0"})
-
-
-# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 
 with app.app_context():
-    # Create required directories
     os.makedirs("uploads", exist_ok=True)
     os.makedirs("reports", exist_ok=True)
-
-    # Initialize database and seed data
     init_db(app)
     seed_admin(app)
     seed_demo_users(app)
@@ -152,24 +150,18 @@ from datetime import datetime, timezone
 
 
 def _student_risk_profile(student_id):
-    """Generate a deterministic risk profile per student.
-    Uses student_id as seed so each student gets a consistent behaviour."""
     h = int(hashlib.md5(str(student_id).encode()).hexdigest(), 16)
-    profile_type = h % 10  # 0-9
+    profile_type = h % 10
 
     if profile_type <= 4:
-        # LOW risk — score stays under 10
         return {"base": random.uniform(1, 6), "drift": 3, "category": "low"}
     elif profile_type <= 7:
-        # MEDIUM risk — score 35-65 (cannot look like Low risk)
         return {"base": random.uniform(40, 55), "drift": 8, "category": "medium"}
     else:
-        # HIGH risk — score 75-95
         return {"base": random.uniform(80, 90), "drift": 5, "category": "high"}
 
 
 def auto_analyse_sessions():
-    """Background task: analyse all ongoing sessions and emit real-time updates."""
     with app.app_context():
         ongoing = ExamSession.query.filter_by(status="ongoing").all()
         if not ongoing:
@@ -179,13 +171,9 @@ def auto_analyse_sessions():
 
         for session in ongoing:
             try:
-                # Get unique risk profile for this student
                 profile = _student_risk_profile(session.student_id)
-
-                # Generate score with random drift around base
                 raw_score = profile["base"] + random.uniform(-profile["drift"], profile["drift"])
 
-                # Clamp low-risk students to max 10, Medium to strictly >= 31, High >= 71
                 if profile["category"] == "low":
                     raw_score = max(0, min(9, raw_score))
                 elif profile["category"] == "medium":
@@ -194,12 +182,9 @@ def auto_analyse_sessions():
                     raw_score = max(71, min(100, raw_score))
 
                 new_score = round(raw_score, 2)
-
-                # Smooth with rolling average (70% old + 30% new)
                 old_score = session.suspicion_index or 0.0
                 smoothed = round(0.6 * old_score + 0.4 * new_score, 2)
 
-                # Clamp again to guarantee bounds
                 if profile["category"] == "low":
                     smoothed = min(smoothed, 9)
                 elif profile["category"] == "medium":
@@ -209,7 +194,6 @@ def auto_analyse_sessions():
 
                 session.suspicion_index = smoothed
 
-                # Determine severity
                 if smoothed > 70:
                     severity = "high"
                 elif smoothed > 30:
@@ -217,11 +201,9 @@ def auto_analyse_sessions():
                 else:
                     severity = "low"
 
-                # Pick random event type for variety
                 event_types = ["face_absent", "multiple_faces", "audio_anomaly",
                                "gaze_deviation", "typing_anomaly", "posture_alert"]
 
-                # Only create alert events for medium/high risk
                 if profile["category"] != "low" and random.random() < 0.4:
                     from models.event import SuspicionEvent
                     event = SuspicionEvent(
@@ -232,7 +214,6 @@ def auto_analyse_sessions():
                     )
                     db.session.add(event)
 
-                    # Emit alert to invigilators
                     student = User.query.get(session.student_id)
                     socketio.emit("alert", {
                         "student_name": student.name if student else "Unknown",
@@ -243,7 +224,6 @@ def auto_analyse_sessions():
 
                 db.session.commit()
 
-                # Emit real-time score update
                 socketio.emit("score_update", {
                     "session_id": session.id,
                     "suspicion_index": smoothed
@@ -257,9 +237,8 @@ def auto_analyse_sessions():
 
 
 def start_auto_analysis():
-    """Start the background analysis loop using eventlet."""
     import eventlet
-    eventlet.sleep(5)  # Wait for server to fully start
+    eventlet.sleep(5)
     print("[AUTO-ANALYSIS] Background auto-analysis started (every 30s)")
     while True:
         try:
@@ -274,20 +253,5 @@ def start_auto_analysis():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    import eventlet
-    port = int(os.environ.get("PORT", 5000))
-    print(f"\n[UIPS] Starting server on http://0.0.0.0:{port}")
-    print(f"[UIPS] Environment: {env}")
-    print(f"[UIPS] Debug: {app.config.get('DEBUG', False)}")
-
-    # Start background auto-analysis in a green thread
-    eventlet.spawn(start_auto_analysis)
-
-    socketio.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        debug=app.config.get("DEBUG", False),
-        use_reloader=False,
-    )
-
+    port = int(os.environ.get("PORT", 10000))
+    socketio.run(app, host="0.0.0.0", port=port)  # use socketio.run, not app.run
