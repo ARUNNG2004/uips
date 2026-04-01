@@ -41,6 +41,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "auth.login"
 
+
+
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
@@ -54,6 +56,7 @@ CORS(
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
+        "uips.netlify.app",  # ← ADD THIS
         "https://*.netlify.app",
         "https://*.vercel.app",
     ],
@@ -62,7 +65,11 @@ CORS(
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*",
+    cors_allowed_origins=[
+        "uips.netlify.app",  # ← ADD THIS
+        "https://*.netlify.app",
+        "http://localhost:5173",
+    ],
     async_mode="eventlet",
     manage_session=False,
 )
