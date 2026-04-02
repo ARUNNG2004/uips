@@ -52,11 +52,11 @@ limiter = Limiter(
 
 CORS(
     app,
-    origins=[
+    origins=[ "*",
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
-        "uips.netlify.app",  # ← ADD THIS
+       "https://uips.netlify.app",  # ← ADD THIS
         "https://*.netlify.app",
         "https://*.vercel.app",
     ],
@@ -65,8 +65,8 @@ CORS(
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins=[
-        "uips.netlify.app",  # ← ADD THIS
+    cors_allowed_origins=["*",
+        "https://uips.netlify.app",  # ← ADD THIS
         "https://*.netlify.app",
         "http://localhost:5173",
     ],
