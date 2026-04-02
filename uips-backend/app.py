@@ -26,7 +26,8 @@ config_class = config_by_name.get(env, config_by_name["development"])
 
 app = Flask(__name__)
 app.config.from_object(config_class)
-
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+app.config["SESSION_COOKIE_SECURE"] = True
 if env == "production":
     app.config["SECRET_KEY"] = config_class().SECRET_KEY
 
@@ -52,23 +53,22 @@ limiter = Limiter(
 
 CORS(
     app,
-    origins=[ "*",
+    origins=[
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
-       "https://uips.netlify.app",  # ← ADD THIS
-        "https://*.netlify.app",
-        "https://*.vercel.app",
+        "https://uips.netlify.app",
+        "https://spectacular-toffee-1c7585.netlify.app",
     ],
     supports_credentials=True,
 )
 
 socketio = SocketIO(
     app,
-    cors_allowed_origins=["*",
-        "https://uips.netlify.app",  # ← ADD THIS
-        "https://*.netlify.app",
+    cors_allowed_origins=[
         "http://localhost:5173",
+        "https://uips.netlify.app",
+        "https://spectacular-toffee-1c7585.netlify.app",
     ],
     async_mode="eventlet",
     manage_session=False,
