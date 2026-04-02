@@ -28,6 +28,7 @@ app = Flask(__name__)
 app.config.from_object(config_class)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 if env == "production":
     app.config["SECRET_KEY"] = config_class().SECRET_KEY
 
@@ -58,7 +59,7 @@ CORS(
         "http://localhost:5174",
         "http://localhost:5175",
         "https://uips.netlify.app",
-        "https://spectacular-toffee-1c7585.netlify.app",
+
     ],
     supports_credentials=True,
 )
@@ -67,8 +68,10 @@ socketio = SocketIO(
     app,
     cors_allowed_origins=[
         "http://localhost:5173",
+               "http://localhost:5174",
+        "http://localhost:5175",
         "https://uips.netlify.app",
-        "https://spectacular-toffee-1c7585.netlify.app",
+  
     ],
     async_mode="eventlet",
     manage_session=False,
